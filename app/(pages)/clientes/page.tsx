@@ -48,7 +48,7 @@ function isValidEmail(email: string) {
 	return re.test((email || "").trim());
 }
 function isValidCNPJ(cnpjRaw: string) {
-	let cnpj = (cnpjRaw || "").replace(/\D/g, "");
+	const cnpj = (cnpjRaw || "").replace(/\D/g, "");
 	if (cnpj.length !== 14) return false;
 	if (/^(\d)\1{13}$/.test(cnpj)) return false;
 	const calcDV = (base: string) => {
