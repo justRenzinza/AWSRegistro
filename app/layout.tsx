@@ -7,7 +7,13 @@ const inter = Inter({
 	display: "swap",
 });
 
-export const metadata = { title: "AWSRegistro" };
+export const metadata = {
+	title: "AWSRegistro • Painel",
+	description: "Sistema de controle e gestão AWSRegistro",
+	icons: {
+		icon: "/logo-allware-teste.png", // caminho relativo à pasta /public
+	},
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (

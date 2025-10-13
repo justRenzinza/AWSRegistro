@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { toCSV, downloadCSV } from "../../helpers/export";
+import { matchFields } from "../../helpers/search";
+
 
 /* ========= tipos ========= */
 export type Cliente = {
@@ -86,25 +88,36 @@ export default function ClientesPage() {
 	const [editForm, setEditForm] = useState<Partial<Cliente>>({});
 	const [errors, setErrors] = useState<{ cnpj?: string; email?: string }>({});
 
-	const filtered = useMemo<Cliente[]>(() => {
-		const q = query.trim().toLowerCase();
-		let data = rows.filter((r) =>
-			[r.codigo, r.razaoSocial, r.cnpj, r.dataRegistro, r.contato, r.telefone, r.email]
-				.join(" ")
-				.toLowerCase()
-				.includes(q)
-		);
-		if (sortKey && sortDir) {
-			data = [...data].sort((a, b) => {
-				const va = String(a[sortKey] ?? "").toLowerCase();
-				const vb = String(b[sortKey] ?? "").toLowerCase();
-				if (va < vb) return sortDir === "asc" ? -1 : 1;
-				if (va > vb) return sortDir === "asc" ? 1 : -1;
-				return 0;
-			});
-		}
-		return data;
-	}, [rows, query, sortKey, sortDir]);
+	const filtered = useMemo(() => {
+	const q = query.trim().toLowerCase();
+
+	// busca por razaoSocial, codigo, email (e também cnpj/telefone/contato/dataRegistro)
+	let data = rows.filter(r =>
+		matchFields(
+			r,
+			q,
+			["razaoSocial", "codigo", "email", "cnpj", "telefone", "contato", "dataRegistro"]
+		)
+	);
+
+	// ordenação
+	if (sortKey && sortDir) {
+		data = [...data].sort((a, b) => {
+			if (sortKey === "codigo") {
+				const na = Number(a.codigo) || 0;
+				const nb = Number(b.codigo) || 0;
+				return sortDir === "asc" ? na - nb : nb - na;
+			}
+			const va = String(a[sortKey] ?? "").toLowerCase();
+			const vb = String(b[sortKey] ?? "").toLowerCase();
+			if (va < vb) return sortDir === "asc" ? -1 : 1;
+			if (va > vb) return sortDir === "asc" ? 1 : -1;
+			return 0;
+		});
+	}
+
+	return data;
+}, [rows, query, sortKey, sortDir]);
 
 	const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 	const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);

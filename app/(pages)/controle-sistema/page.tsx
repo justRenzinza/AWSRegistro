@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { matchFields } from "../../helpers/search";
 
 /* ------------ base de clientes (para o select) ----------- */
 type Cliente = { id: number; nome: string };
@@ -96,20 +97,21 @@ export default function ControleDeSistemaPage() {
 
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase();
+
 		let data = rows.filter(r =>
-			[
-				nomeCliente(r.clienteId),
-				r.sistema,
-				String(r.qtdLicenca),
-				String(r.qtdDiaLiberacao),
-				r.status,
-			].join(" ").toLowerCase().includes(q)
+			matchFields(
+				r,
+				q,
+				["sistema", "qtdLicenca", "qtdDiaLiberacao", "status"],
+				[nomeCliente(r.clienteId)]
+			)
 		);
 
 		if (sortKey && sortDir) {
 			data = [...data].sort((a, b) => {
 				let va = "";
 				let vb = "";
+
 				if (sortKey === "cliente") {
 					va = nomeCliente(a.clienteId).toLowerCase();
 					vb = nomeCliente(b.clienteId).toLowerCase();
@@ -117,13 +119,16 @@ export default function ControleDeSistemaPage() {
 					va = String(a[sortKey] ?? "").toLowerCase();
 					vb = String(b[sortKey] ?? "").toLowerCase();
 				}
-				if (va < vb) return sortDir === "asc" ? -1 : 1; 
+
+				if (va < vb) return sortDir === "asc" ? -1 : 1;
 				if (va > vb) return sortDir === "asc" ? 1 : -1;
 				return 0;
 			});
 		}
-		return data;
-	}, [rows, query, sortKey, sortDir]);
+
+	return data;
+}, [rows, query, sortKey, sortDir]);
+
 
 	const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 	const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
