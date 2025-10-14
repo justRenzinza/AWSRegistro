@@ -1,28 +1,57 @@
 @import "tailwindcss";
 
+/* ---------- Tokens básicos ---------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+	--background: #ffffff;
+	--foreground: #171717;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-              "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
-              "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+	--font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+		"Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
-html, body { 
-  @apply font-sans antialiased text-gray-900 bg-gray-50;
+/* ---------- Base ---------- */
+html, body {
+	@apply font-sans antialiased text-gray-900 bg-gray-50;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+
+	/* página estática: sem rolagem horizontal no documento */
+	overflow-x: clip;
 }
 
+/* Dark mode automático (opcional) */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+	:root {
+		--background: #0a0a0a;
+		--foreground: #ededed;
+	}
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+	background: var(--background);
+	color: var(--foreground);
+}
+
+/* ---------- Utilitários ---------- */
+/* Oculta trilho de scroll (para usar no wrapper da tabela) */
+.no-scrollbar::-webkit-scrollbar { 
+  display: none; 
+}
+.no-scrollbar { 
+  -ms-overflow-style: none; 
+  scrollbar-width: none; 
+}
+
+/* Scroller horizontal com gesto suave no iOS/Android.
+   Use junto com overflow-x-auto (ou direto como classe utilitária extra). */
+.scroll-x-touch {
+	-webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+	scroll-behavior: smooth;
+	scrollbar-width: thin;
+}
+
+.debug-scroll {
+	outline: 2px dashed red;
 }

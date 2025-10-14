@@ -1,12 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { matchFields } from "../../helpers/search";
 
 /* ------------ base de clientes (para o select) ----------- */
-type Cliente = { id: number; nome: string };
-
-const clientes: Cliente[] = [
+type ClienteBase = { id: number; nome: string; };
+const clientes: ClienteBase[] = [
 	{ id: 1, nome: "CACAU SUL COMERCIO ATACADISTA EIRELI" },
 	{ id: 2, nome: "WKS EXPORTACOES LTDA" },
 	{ id: 3, nome: "ALLWARE TESTE" },
@@ -16,14 +14,8 @@ const clientes: Cliente[] = [
 	{ id: 7, nome: "B.M. ARMAZENS GERAIS LTDA" },
 ];
 
-/* ------------ opções de sistemas para o select ----------- */
-const sistemas = [
-	"SACEX",
-	"ERP Allware",
-	"Portal Cliente",
-	"Financeiro",
-	"Mobile App",
-] as const;
+/* ------------ opções de sistemas ----------- */
+const sistemas = ["SACEX"] as const;
 
 type StatusContrato =
 	| "Regular"
@@ -40,8 +32,11 @@ type ControleSistema = {
 	status: StatusContrato;
 };
 
-/* ------------ seed: exemplo p/ TODOS os clientes ---------- */
+/* ------------ seed ----------- */
 const seed: ControleSistema[] = clientes.map((c, idx) => {
+	const sist = sistemas[idx % sistemas.length];
+	const lic = [5, 3, 12, 8, 2, 10, 6][idx % 7];
+	const dias = [31, 15, 7, 10, 20, 5, 30][idx % 7];
 	const statusPool: StatusContrato[] = [
 		"Regular",
 		"Irregular (Sem Restrição)",
@@ -51,9 +46,9 @@ const seed: ControleSistema[] = clientes.map((c, idx) => {
 	return {
 		id: 100 + idx,
 		clienteId: c.id,
-		sistema: sistemas[idx % sistemas.length],
-		qtdLicenca: [5, 3, 12, 8, 2, 10, 6][idx % 7],
-		qtdDiaLiberacao: [31, 15, 7, 10, 20, 5, 30][idx % 7],
+		sistema: sist,
+		qtdLicenca: lic,
+		qtdDiaLiberacao: dias,
 		status: statusPool[idx % statusPool.length],
 	};
 });
@@ -97,21 +92,20 @@ export default function ControleDeSistemaPage() {
 
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase();
-
 		let data = rows.filter(r =>
-			matchFields(
-				r,
-				q,
-				["sistema", "qtdLicenca", "qtdDiaLiberacao", "status"],
-				[nomeCliente(r.clienteId)]
-			)
+			[
+				nomeCliente(r.clienteId),
+				r.sistema,
+				String(r.qtdLicenca),
+				String(r.qtdDiaLiberacao),
+				r.status,
+			].join(" ").toLowerCase().includes(q)
 		);
 
 		if (sortKey && sortDir) {
 			data = [...data].sort((a, b) => {
 				let va = "";
 				let vb = "";
-
 				if (sortKey === "cliente") {
 					va = nomeCliente(a.clienteId).toLowerCase();
 					vb = nomeCliente(b.clienteId).toLowerCase();
@@ -119,16 +113,13 @@ export default function ControleDeSistemaPage() {
 					va = String(a[sortKey] ?? "").toLowerCase();
 					vb = String(b[sortKey] ?? "").toLowerCase();
 				}
-
 				if (va < vb) return sortDir === "asc" ? -1 : 1;
 				if (va > vb) return sortDir === "asc" ? 1 : -1;
 				return 0;
 			});
 		}
-
-	return data;
-}, [rows, query, sortKey, sortDir]);
-
+		return data;
+	}, [rows, query, sortKey, sortDir]);
 
 	const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 	const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -204,30 +195,22 @@ export default function ControleDeSistemaPage() {
 	return (
 		<div className="min-h-screen bg-gray-50">
 			<div className="flex">
-				{/* ============ SIDEBAR (DESKTOP) — AJUSTADA ========= */}
+				{/* sidebar (desktop) */}
 				<aside className="hidden sm:flex sm:flex-col sm:w-64 sm:min-h-screen sm:sticky sm:top-0 sm:bg-white sm:shadow sm:border-r">
 					<div className="bg-gradient-to-r from-blue-700 to-blue-500 p-4 text-white">
-						<div className="font-semibold flex-1 text-center">AWSRegistro • Painel</div>
+						<div className="flex items-center gap-3">
+							<div className="font-semibold flex-1 text-center">AWSRegistro • Painel</div>
+						</div>
 					</div>
 
 					<nav className="flex-1 p-3">
-						<a
-							href="/clientes"
-							className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-						>
+						<a href="/clientes" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
 							Cliente
 						</a>
-						<a
-							href="/controle-sistema"
-							className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200"
-						>
+						<a href="/controle-sistema" className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200">
 							<span>Controle de Sistema</span>
-							<span className="text-xs text-blue-600" />
 						</a>
-						<a
-							href="#"
-							className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-						>
+						<a href="#" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
 							Controle Registro
 						</a>
 					</nav>
@@ -243,7 +226,7 @@ export default function ControleDeSistemaPage() {
 					</div>
 				</aside>
 
-				{/* drawer mobile (mesmo estilo do resto) */}
+				{/* topo mobile */}
 				{openSidebar && (
 					<div className="fixed inset-0 z-40 sm:hidden" aria-hidden="true" onClick={() => setOpenSidebar(false)}>
 						<div className="absolute inset-0 bg-black/40" />
@@ -264,20 +247,14 @@ export default function ControleDeSistemaPage() {
 
 				{/* área principal */}
 				<div className="flex-1">
-					{/* topo mobile: botão menu */}
-					<div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-white px-4 py-3 sm:hidden">
-						<button
-							className="rounded-md border px-3 py-2 text-sm shadow transition-transform hover:scale-105"
-							onClick={() => setOpenSidebar(true)}
-							aria-label="Abrir menu"
-						>
-							☰
-						</button>
-						<div className="ml-1 font-medium">Controle de Sistema</div>
+					<div className="sticky top-0 z-10 flex bg-gradient-to-r from-blue-600 to-blue-500 
+					items-center gap-3 border-b bg-white px-4 py-3 sm:hidden">
+						<button className="rounded-md border px-3 py-2 font-semibold shadow transition-transform hover:scale-105" onClick={() => setOpenSidebar(true)} aria-label="Abrir menu">☰</button>
+						<div className="ml-1 font-semibold">AWSRegistro | Painel</div>
 					</div>
 
 					<main className="mx-auto max-w-7xl p-4 md:p-6">
-						<h1 className="mb-6 text-3xl font-semibold text-gray-800">Controle de Sistema</h1>
+						<h1 className="mb-6 text-2xl sm:text-3xl font-semibold text-gray-800">Controle de Sistema</h1>
 
 						{/* Ações e busca */}
 						<div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -293,40 +270,50 @@ export default function ControleDeSistemaPage() {
 									placeholder="Pesquisa rápida"
 									value={query}
 									onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-									className="w-64 rounded-md border text-black border-gray-300 bg-white px-3 py-2 text-sm"
+									className="w-full sm:w-64 rounded-md border text-black border-gray-300 bg-white px-3 py-2 text-sm"
 								/>
 								<button className="rounded-md bg-white px-3 py-2 text-sm shadow">🔍</button>
 								<button className="rounded-md bg-white px-3 py-2 text-sm shadow">⚙️</button>
 							</div>
 						</div>
 
-						{/* Tabela com cabeçalho em gradiente (igual Clientes) */}
-						<div className="overflow-hidden rounded-xl bg-white shadow">
-							<table className="min-w-full border-separate border-spacing-0 text-center">
+						{/* Tabela responsiva */}
+						<div className="overflow-x-auto sm:overflow-visible rounded-xl bg-white shadow">
+							<table className="min-w-full border-separate border-spacing-0 text-xs sm:text-sm text-center sm:text-left">
 								<thead>
-									<tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm">
-										<th className="sticky top-0 z-[1] w-24 px-3 py-3">Ações</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 text-left" onClick={() => toggleSort("cliente")}>Cliente {sortKey === "cliente" ? (sortDir === "asc" ? "▲" : "▼") : ""}</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 text-left" onClick={() => toggleSort("sistema")}>Sistema {sortKey === "sistema" ? (sortDir === "asc" ? "▲" : "▼") : ""}</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3" onClick={() => toggleSort("qtdLicenca")}>Qtd. Licença {sortKey === "qtdLicenca" ? (sortDir === "asc" ? "▲" : "▼") : ""}</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3" onClick={() => toggleSort("qtdDiaLiberacao")}>Qtd. Dias Liberação {sortKey === "qtdDiaLiberacao" ? (sortDir === "asc" ? "▲" : "▼") : ""}</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3" onClick={() => toggleSort("status")}>Status {sortKey === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}</th>
+									<tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+										<th className="sticky top-0 z-[1] w-24 px-3 py-3 text-center">Ações</th>
+										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 whitespace-nowrap" onClick={() => toggleSort("cliente")}>
+											Cliente {sortKey === "cliente" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 whitespace-nowrap" onClick={() => toggleSort("sistema")}>
+											Sistema {sortKey === "sistema" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 hidden sm:table-cell" onClick={() => toggleSort("qtdLicenca")}>
+											Qtd. Licença {sortKey === "qtdLicenca" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 hidden sm:table-cell" onClick={() => toggleSort("qtdDiaLiberacao")}>
+											Qtd. Dia Liberação {sortKey === "qtdDiaLiberacao" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 whitespace-nowrap" onClick={() => toggleSort("status")}>
+											Status {sortKey === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
 									</tr>
 								</thead>
-								<tbody className="text-sm text-gray-900">
+								<tbody className="text-gray-900">
 									{pageData.map((r, idx) => (
-										<tr key={r.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-200"}>
+										<tr key={r.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-100"}>
 											<td className="px-3 py-3">
 												<div className="flex items-center justify-center gap-2">
 													<button onClick={() => handleEdit(r.id)} className="rounded-md border text-white bg-yellow-400 px-2 py-1 hover:bg-yellow-500 transition" title="Editar">✎</button>
 													<button onClick={() => handleDelete(r.id)} className="rounded-md border bg-red-500 text-white px-2 py-1 hover:bg-red-600 transition" title="Excluir">✖</button>
 												</div>
 											</td>
-											<td className="px-3 py-3 text-left">{nomeCliente(r.clienteId)}</td>
-											<td className="px-3 py-3 text-left">{r.sistema}</td>
-											<td className="px-3 py-3">{r.qtdLicenca}</td>
-											<td className="px-3 py-3">{r.qtdDiaLiberacao}</td>
-											<td className="px-3 py-3">{r.status}</td>
+											<td className="px-3 py-3 whitespace-nowrap">{nomeCliente(r.clienteId)}</td>
+											<td className="px-3 py-3 whitespace-nowrap">{r.sistema}</td>
+											<td className="px-3 py-3 hidden sm:table-cell">{r.qtdLicenca}</td>
+											<td className="px-3 py-3 hidden sm:table-cell">{r.qtdDiaLiberacao}</td>
+											<td className="px-3 py-3 whitespace-nowrap">{r.status}</td>
 										</tr>
 									))}
 
@@ -355,7 +342,7 @@ export default function ControleDeSistemaPage() {
 
 			{/* -------------------- POPUP -------------------- */}
 			{editingId !== null && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
 					<div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-lg">
 						<h2 className="mb-4 text-xl font-semibold text-blue-700">
 							{editingId === 0 ? "Adicionar Registro" : "Editar Registro"}
@@ -413,7 +400,10 @@ export default function ControleDeSistemaPage() {
 							<label className="text-sm md:col-span-2">
 								<span className="mb-2 block text-black">Status *</span>
 								<div className="space-y-2 text-black">
-									{(["Regular","Irregular (Sem Restrição)","Irregular (Contrato Cancelado)","Irregular (Com Restrição)"] as StatusContrato[]).map(st => (
+									{(["Regular",
+										"Irregular (Sem Restrição)",
+										"Irregular (Contrato Cancelado)",
+										"Irregular (Com Restrição)"] as StatusContrato[]).map(st => (
 										<label key={st} className="flex items-center gap-2">
 											<input
 												type="radio"
