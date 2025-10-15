@@ -6,8 +6,8 @@
 	--foreground: #171717;
 
 	--font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-		"Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
-		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 /* ---------- Base ---------- */
@@ -20,7 +20,6 @@ html, body {
 	overflow-x: clip;
 }
 
-/* Dark mode automático (opcional) */
 @media (prefers-color-scheme: dark) {
 	:root {
 		--background: #0a0a0a;
@@ -31,27 +30,4 @@ html, body {
 body {
 	background: var(--background);
 	color: var(--foreground);
-}
-
-/* ---------- Utilitários ---------- */
-/* Oculta trilho de scroll (para usar no wrapper da tabela) */
-.no-scrollbar::-webkit-scrollbar { 
-  display: none; 
-}
-.no-scrollbar { 
-  -ms-overflow-style: none; 
-  scrollbar-width: none; 
-}
-
-/* Scroller horizontal com gesto suave no iOS/Android.
-   Use junto com overflow-x-auto (ou direto como classe utilitária extra). */
-.scroll-x-touch {
-	-webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
-	scroll-behavior: smooth;
-	scrollbar-width: thin;
-}
-
-.debug-scroll {
-	outline: 2px dashed red;
 }

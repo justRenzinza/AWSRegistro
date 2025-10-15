@@ -52,8 +52,8 @@ function isValidCNPJ(cnpjRaw: string) {
 	if (cnpj.length !== 14) return false;
 	if (/^(\d)\1{13}$/.test(cnpj)) return false;
 	const calcDV = (base: string) => {
-		const pesos1 = [5,4,3,2,9,8,7,6,5,4,3,2];
-		const pesos2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
+		const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+		const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
 		const arr = base.split("").map(n => parseInt(n, 10));
 		const d1 = 11 - (arr.slice(0, 12).reduce((acc, n, i) => acc + n * pesos1[i], 0) % 11);
 		const dv1 = d1 >= 10 ? 0 : d1;
@@ -86,7 +86,7 @@ export default function ClientesPage() {
 	const [editForm, setEditForm] = useState<Partial<Cliente>>({});
 	const [errors, setErrors] = useState<{ cnpj?: string; email?: string }>({});
 
-	/* busca (código, razão social, cnpj, data, contato, telefone, email) */
+	/* busca */
 	const filtered = useMemo<Cliente[]>(() => {
 		const q = query.trim().toLowerCase();
 		let data = rows.filter((r) =>
@@ -257,7 +257,10 @@ export default function ClientesPage() {
 						<button
 							className="rounded-md border px-3 py-2 text-sm shadow transition-transform hover:scale-105"
 							onClick={() => setOpenSidebar(true)}
-							aria-label="Abrir menu">☰</button>
+							aria-label="Abrir menu"
+						>
+							☰
+						</button>
 						<div className="ml-1 font-semibold">AWSRegistro | Painel</div>
 					</div>
 
@@ -285,119 +288,89 @@ export default function ClientesPage() {
 							</div>
 						</div>
 
-						{/* TABELA — scroll só aqui; sticky apenas no md+ */}
-<div className="-mx-4 sm:mx-0 relative">
-	{/* este é o ÚNICO lugar com overflow-x */}
-	<div className="overflow-x-auto no-scrollbar touch-pan-x px-4 sm:px-0">
-		{/* 👇 Força a largura mínima no wrapper, NÃO no <table> */}
-		<div className="min-w-[980px] md:min-w-0">
-			<table className="w-full table-auto border-separate border-spacing-0 text-xs sm:text-sm bg-white rounded-xl shadow">
-				<thead>
-					<tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
-						{/* sticky só em md+ */}
-						<th className="px-3 py-3 w-28 text-left whitespace-nowrap md:sticky md:left-0 md:z-20 md:bg-blue-600/95 md:backdrop-blur">
-							Ações
-						</th>
-						<th
-							className="px-3 py-3 w-20 text-center whitespace-nowrap cursor-pointer"
-							onClick={() => toggleSort("codigo")}
-						>
-							Código {sortKey === "codigo" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-						</th>
-						<th
-							className="px-3 py-3 text-left whitespace-nowrap cursor-pointer"
-							onClick={() => toggleSort("razaoSocial")}
-						>
-							Razão Social {sortKey === "razaoSocial" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-						</th>
-						<th
-							className="px-3 py-3 text-center whitespace-nowrap cursor-pointer"
-							onClick={() => toggleSort("cnpj")}
-						>
-							CNPJ {sortKey === "cnpj" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-						</th>
-						<th
-							className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer"
-							onClick={() => toggleSort("dataRegistro")}
-						>
-							Data Registro {sortKey === "dataRegistro" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-						</th>
-						<th
-							className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer"
-							onClick={() => toggleSort("contato")}
-						>
-							Contato {sortKey === "contato" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-						</th>
-						<th
-							className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer"
-							onClick={() => toggleSort("telefone")}
-						>
-							Telefone {sortKey === "telefone" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-						</th>
-						<th
-							className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer"
-							onClick={() => toggleSort("email")}
-						>
-							Email {sortKey === "email" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-						</th>
-					</tr>
-				</thead>
+						{/* tabela simples (sem scroll lateral) */}
+						<div className="rounded-xl bg-white shadow overflow-hidden">
+							<table className="w-full border-separate border-spacing-0 text-xs sm:text-sm">
+								<thead>
+									<tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+										<th className="px-3 py-3 w-28 text-left whitespace-nowrap">Ações</th>
+										<th className="px-3 py-3 w-20 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("codigo")}>
+											Código {sortKey === "codigo" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="px-3 py-3 text-left whitespace-nowrap cursor-pointer" onClick={() => toggleSort("razaoSocial")}>
+											Razão Social {sortKey === "razaoSocial" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("cnpj")}>
+											CNPJ {sortKey === "cnpj" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer" onClick={() => toggleSort("dataRegistro")}>
+											Data Registro {sortKey === "dataRegistro" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer" onClick={() => toggleSort("contato")}>
+											Contato {sortKey === "contato" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer" onClick={() => toggleSort("telefone")}>
+											Telefone {sortKey === "telefone" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+										<th className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer" onClick={() => toggleSort("email")}>
+											Email {sortKey === "email" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+										</th>
+									</tr>
+								</thead>
 
-				<tbody className="text-gray-900">
-					{pageData.map((r, idx) => (
-						<tr key={r.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-100"}>
-							{/* sticky só em md+; no mobile libera o arraste */}
-							<td className="px-3 py-3 md:sticky md:left-0 md:z-10 md:bg-inherit">
-								<div className="flex items-center justify-center gap-2 select-none">
-									<button
-										onClick={() => handleEditOpen(r.id)}
-										className="rounded-md border text-white bg-yellow-400 px-2 py-1 hover:bg-yellow-500 transition"
-										title="Editar"
-									>
-										✎
-									</button>
-									<button
-										onClick={() => handleDelete(r.id)}
-										className="rounded-md border bg-red-500 text-white px-2 py-1 hover:bg-red-600 transition"
-										title="Excluir"
-									>
-										✖
-									</button>
-								</div>
-							</td>
+								<tbody className="text-gray-900">
+									{pageData.map((r, idx) => (
+										<tr key={r.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-100"}>
+											<td className="px-3 py-3">
+												<div className="flex items-center justify-center gap-2">
+													<button
+														onClick={() => handleEditOpen(r.id)}
+														className="rounded-md border text-white bg-yellow-400 px-2 py-1 hover:bg-yellow-500 transition"
+														title="Editar"
+													>
+														✎
+													</button>
+													<button
+														onClick={() => handleDelete(r.id)}
+														className="rounded-md border bg-red-500 text-white px-2 py-1 hover:bg-red-600 transition"
+														title="Excluir"
+													>
+														✖
+													</button>
+												</div>
+											</td>
 
-							<td className="px-3 py-3 whitespace-nowrap text-center tabular-nums">{r.codigo}</td>
-							<td className="px-3 py-3 whitespace-nowrap">{r.razaoSocial}</td>
-							<td className="px-3 py-3 whitespace-nowrap text-center">{formatCNPJ(r.cnpj)}</td>
-							<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">{r.dataRegistro}</td>
-							<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">{r.contato}</td>
-							<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">{formatPhone(r.telefone)}</td>
-							<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">
-								<a href={`mailto:${r.email}`} className="underline-offset-2 hover:underline">
-									{r.email}
-								</a>
-							</td>
-						</tr>
-					))}
+											<td className="px-3 py-3 whitespace-nowrap text-center tabular-nums">{r.codigo}</td>
 
-					{pageData.length === 0 && (
-						<tr>
-							<td className="px-3 py-8 text-center text-gray-500" colSpan={8}>
-								Nenhum registro encontrado.
-							</td>
-						</tr>
-					)}
-				</tbody>
-			</table>
-		</div>
-	</div>
-</div>
+											<td
+												className="px-3 py-3 text-left max-w-[10rem] truncate sm:max-w-none sm:whitespace-normal"
+												title={r.razaoSocial}
+											>
+												{r.razaoSocial}
+											</td>
 
+											<td className="px-3 py-3 whitespace-nowrap text-center">{formatCNPJ(r.cnpj)}</td>
+											<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">{r.dataRegistro}</td>
+											<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">{r.contato}</td>
+											<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">{formatPhone(r.telefone)}</td>
+											<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">
+												<a href={`mailto:${r.email}`} className="underline-offset-2 hover:underline">
+													{r.email}
+												</a>
+											</td>
+										</tr>
+									))}
 
-
-
-
-
+									{pageData.length === 0 && (
+										<tr>
+											<td className="px-3 py-8 text-center text-gray-500" colSpan={8}>
+												Nenhum registro encontrado.
+											</td>
+										</tr>
+									)}
+								</tbody>
+							</table>
+						</div>
 
 						{/* paginação */}
 						<div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-black">
