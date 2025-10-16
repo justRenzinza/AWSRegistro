@@ -15,9 +15,6 @@ html, body {
 	@apply font-sans antialiased text-gray-900 bg-gray-50;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
-
-	/* página estática: sem rolagem horizontal no documento */
-	overflow-x: clip;
 }
 
 @media (prefers-color-scheme: dark) {

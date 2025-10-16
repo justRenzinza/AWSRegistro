@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { toCSV, downloadCSV, toCSVControleSistema } from "../../helpers/export";
 
 /* ------------ base de clientes (para o select) ----------- */
 type ClienteBase = { id: number; nome: string; };
@@ -60,23 +61,23 @@ function nomeCliente(id: number) {
 
 /* --------------------- componente ------------------------ */
 export default function ControleDeSistemaPage() {
-	// tabela e filtros
+	/* tabela e filtros */
 	const [query, setQuery] = useState("");
 	const [page, setPage] = useState(1);
 	const [pageSize] = useState(10);
 	const [rows, setRows] = useState<ControleSistema[]>(seed);
 
-	// ordenação
+	/* ordenação */
 	type SortKey = keyof Pick<ControleSistema, "sistema" | "qtdLicenca" | "qtdDiaLiberacao" | "status"> | "cliente";
 	type SortDir = "asc" | "desc" | null;
 	const [sortKey, setSortKey] = useState<SortKey | null>(null);
 	const [sortDir, setSortDir] = useState<SortDir>(null);
 
-	// popup
+	/* popup */
 	const [editingId, setEditingId] = useState<number | null>(null); // 0 = novo
 	const [form, setForm] = useState<Partial<ControleSistema>>({});
 
-	// sidebar mobile
+	/* sidebar mobile */
 	const [openSidebar, setOpenSidebar] = useState(false);
 
 	function toggleSort(key: SortKey) {
@@ -124,6 +125,11 @@ export default function ControleDeSistemaPage() {
 	const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 	const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+	/* mantém a página válida quando o filtro muda */
+	useEffect(() => {
+		setPage((p) => Math.min(p, totalPages));
+	}, [totalPages]);
+
 	/* ------------------- ações ------------------- */
 	function handleAdd() {
 		setEditingId(0);
@@ -155,7 +161,7 @@ export default function ControleDeSistemaPage() {
 	}
 
 	function handleSave() {
-		// validação simples
+		/* validação simples */
 		if (!form.clienteId || (form.sistema ?? "").trim() === "") {
 			alert("Cliente e Sistema são obrigatórios.");
 			return;
@@ -192,6 +198,62 @@ export default function ControleDeSistemaPage() {
 		setForm({});
 	}
 
+	function handleExport() {
+		const csv = toCSVControleSistema(filtered, nomeCliente);
+		const nome = `controle_sistema_${new Date().toISOString().slice(0, 10)}.csv`;
+		downloadCSV(csv, nome);
+	}
+
+
+	function handlePrint() {
+		window.print();
+	}
+
+	/* ====== LISTA MOBILE ====== */
+	const MobileList = () => (
+		<ul className="sm:hidden space-y-3">
+			{pageData.map((r) => (
+				<li key={r.id} className="rounded-xl border bg-white p-4 shadow">
+					{/* header com cliente + ações à direita */}
+					<div className="flex items-start gap-3">
+						<div className="min-w-0 flex-1">
+							<div className="font-medium text-gray-900 break-words">{nomeCliente(r.clienteId)}</div>
+							<div className="text-sm text-gray-500">{r.sistema}</div>
+						</div>
+						<div className="flex items-start gap-1">
+							<button
+								onClick={() => handleEdit(r.id)}
+								className="inline-flex items-center justify-center rounded-xl bg-yellow-400 w-7 h-7 text-white font-semibold hover:bg-yellow-500 transition-transform transform hover:scale-110"
+								aria-label={`Editar ${nomeCliente(r.clienteId)}`}
+								title="Editar"
+							>
+								✎
+							</button>
+							<button
+								onClick={() => handleDelete(r.id)}
+								className="inline-flex items-center justify-center rounded-xl bg-red-500 w-7 h-7 text-white font-semibold hover:bg-red-600 transition-transform transform hover:scale-110"
+								aria-label={`Excluir ${nomeCliente(r.clienteId)}`}
+								title="Excluir"
+							>
+								✖
+							</button>
+						</div>
+					</div>
+
+					{/* conteúdo */}
+					<div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-700">
+						<div><span className="text-gray-500">Licenças:</span> {r.qtdLicenca}</div>
+						<div><span className="text-gray-500">Dias Lib.:</span> {r.qtdDiaLiberacao}</div>
+						<div className="col-span-2"><span className="text-gray-500">Status:</span> {r.status}</div>
+					</div>
+				</li>
+			))}
+			{pageData.length === 0 && (
+				<li className="rounded-xl border bg-white p-8 text-center text-gray-500">Nenhum registro encontrado.</li>
+			)}
+		</ul>
+	);
+
 	return (
 		<div className="min-h-screen bg-gray-50">
 			<div className="flex">
@@ -199,20 +261,16 @@ export default function ControleDeSistemaPage() {
 				<aside className="hidden sm:flex sm:flex-col sm:w-64 sm:min-h-screen sm:sticky sm:top-0 sm:bg-white sm:shadow sm:border-r">
 					<div className="bg-gradient-to-r from-blue-700 to-blue-500 p-4 text-white">
 						<div className="flex items-center gap-3">
-							<div className="font-semibold flex-1 text-center">AWSRegistro • Painel</div>
+							<div className="font-semibold flex-1 text-center">AWSRegistro | Painel</div>
 						</div>
 					</div>
 
 					<nav className="flex-1 p-3">
-						<a href="/clientes" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
-							Cliente
-						</a>
+						<a href="/clientes" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Cliente</a>
 						<a href="/controle-sistema" className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200">
 							<span>Controle de Sistema</span>
 						</a>
-						<a href="#" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
-							Controle Registro
-						</a>
+						<a href="#" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle Registro</a>
 					</nav>
 
 					<div className="p-3 text-sm text-gray-600">
@@ -226,13 +284,18 @@ export default function ControleDeSistemaPage() {
 					</div>
 				</aside>
 
-				{/* topo mobile */}
+				{/* sidebar mobile (drawer) */}
 				{openSidebar && (
 					<div className="fixed inset-0 z-40 sm:hidden" aria-hidden="true" onClick={() => setOpenSidebar(false)}>
 						<div className="absolute inset-0 bg-black/40" />
-						<div className="absolute left-0 top-0 h-full w-64 bg-white shadow-lg" onClick={(e) => e.stopPropagation()}>
+						<div
+							className="absolute left-0 top-0 h-full w-64 bg-white shadow-lg"
+							onClick={(e) => e.stopPropagation()}
+							role="dialog"
+							aria-label="Menu"
+						>
 							<div className="bg-gradient-to-r from-blue-700 to-blue-500 p-4 text-white">
-								<div className="font-semibold">AWS • Painel</div>
+								<div className="font-semibold">AWSRegistro | Painel</div>
 							</div>
 							<nav className="p-3">
 								<a href="/clientes" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Cliente</a>
@@ -247,93 +310,191 @@ export default function ControleDeSistemaPage() {
 
 				{/* área principal */}
 				<div className="flex-1">
-					<div className="sticky top-0 z-10 flex bg-gradient-to-r from-blue-600 to-blue-500 
-					items-center gap-3 border-b bg-white px-4 py-3 sm:hidden">
-						<button className="rounded-md border px-3 py-2 font-semibold shadow transition-transform hover:scale-105" onClick={() => setOpenSidebar(true)} aria-label="Abrir menu">☰</button>
-						<div className="ml-1 font-semibold">AWSRegistro | Painel</div>
+					{/* topo mobile */}
+					<div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 sm:hidden">
+						<button
+							className="rounded-xl border px-3 py-2 text-sm shadow transition-transform hover:scale-105"
+							onClick={() => setOpenSidebar(true)}
+							aria-label="Abrir menu"
+						>
+							☰
+						</button>
+						<div className="ml-1 flex-1 text-center font-semibold text-white">AWSRegistro | Painel</div>
 					</div>
 
 					<main className="mx-auto max-w-7xl p-4 md:p-6">
-						<h1 className="mb-6 text-2xl sm:text-3xl font-semibold text-gray-800">Controle de Sistema</h1>
+						<h1 className="mb-4 text-2xl sm:text-3xl font-semibold text-gray-800">Controle de Sistema</h1>
 
-						{/* Ações e busca */}
-						<div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-							<div className="flex flex-wrap items-center gap-2 text-black">
-								<button onClick={handleAdd} className="rounded-md bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-105">➕ Adicionar</button>
-								<button className="rounded-md bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-105">⬇️ Exportar</button>
-								<button className="rounded-md bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-105">🖨️ Imprimir</button>
-							</div>
-
-							<div className="flex items-center gap-2">
+						{/* busca + ações (mobile e desktop separados) */}
+						<div className="mb-4 space-y-2">
+							{/* MOBILE: input + botões compactos */}
+							<div className="flex items-center gap-2 sm:hidden">
 								<input
 									type="text"
 									placeholder="Pesquisa rápida"
 									value={query}
 									onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-									className="w-full sm:w-64 rounded-md border text-black border-gray-300 bg-white px-3 py-2 text-sm"
+									className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 placeholder:text-gray-500 text-md shadow"
 								/>
-								<button className="rounded-md bg-white px-3 py-2 text-sm shadow">🔍</button>
-								<button className="rounded-md bg-white px-3 py-2 text-sm shadow">⚙️</button>
+								<button
+									onClick={handleAdd}
+									className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 bg-white text-gray-700 shadow transform transition-transform hover:scale-105"
+									title="Adicionar"
+									aria-label="Adicionar"
+								>
+									➕
+								</button>
+								<button
+									onClick={handleExport}
+									className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 bg-white text-blue-600 shadow transform transition-transform hover:scale-105"
+									title="Exportar CSV"
+									aria-label="Exportar CSV"
+								>
+									⬇️
+								</button>
+							</div>
+
+							{/* DESKTOP: input + botões com texto */}
+							<div className="hidden sm:flex sm:items-center sm:justify-between">
+								<div className="flex w-full items-center gap-2">
+									<input
+										type="text"
+										placeholder="Pesquisa rápida"
+										value={query}
+										onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+										className="w-full sm:w-72 rounded-xl border border-gray-200 bg-white px-3 py-2 text-md text-gray-600 placeholder:text-gray-500 shadow"
+									/>
+									<button
+										onClick={handleAdd}
+										className="rounded-xl px-3 py-2 border border-gray-200 bg-white text-sm font-medium text-gray-600 shadow transform transition-transform hover:scale-105"
+										title="Adicionar"
+										aria-label="Adicionar"
+									>
+										➕ Adicionar
+									</button>
+									<button
+										onClick={handleExport}
+										className="rounded-xl px-3 py-2 border border-gray-200 bg-white text-sm font-medium text-gray-600 shadow transform transition-transform hover:scale-105"
+										title="Exportar"
+										aria-label="Exportar"
+									>
+										⬇️ Exportar CSV
+									</button>
+								</div>
 							</div>
 						</div>
 
-						{/* Tabela responsiva */}
-						<div className="overflow-x-auto sm:overflow-visible rounded-xl bg-white shadow">
-							<table className="min-w-full border-separate border-spacing-0 text-xs sm:text-sm text-center sm:text-left">
-								<thead>
-									<tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
-										<th className="sticky top-0 z-[1] w-24 px-3 py-3 text-center">Ações</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 whitespace-nowrap" onClick={() => toggleSort("cliente")}>
-											Cliente {sortKey === "cliente" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 whitespace-nowrap" onClick={() => toggleSort("sistema")}>
-											Sistema {sortKey === "sistema" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 hidden sm:table-cell" onClick={() => toggleSort("qtdLicenca")}>
-											Qtd. Licença {sortKey === "qtdLicenca" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 hidden sm:table-cell" onClick={() => toggleSort("qtdDiaLiberacao")}>
-											Qtd. Dia Liberação {sortKey === "qtdDiaLiberacao" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="sticky top-0 z-[1] cursor-pointer px-3 py-3 whitespace-nowrap" onClick={() => toggleSort("status")}>
-											Status {sortKey === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-									</tr>
-								</thead>
-								<tbody className="text-gray-900">
-									{pageData.map((r, idx) => (
-										<tr key={r.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-100"}>
-											<td className="px-3 py-3">
-												<div className="flex items-center justify-center gap-2">
-													<button onClick={() => handleEdit(r.id)} className="rounded-md border text-white bg-yellow-400 px-2 py-1 hover:bg-yellow-500 transition" title="Editar">✎</button>
-													<button onClick={() => handleDelete(r.id)} className="rounded-md border bg-red-500 text-white px-2 py-1 hover:bg-red-600 transition" title="Excluir">✖</button>
-												</div>
-											</td>
-											<td className="px-3 py-3 whitespace-nowrap">{nomeCliente(r.clienteId)}</td>
-											<td className="px-3 py-3 whitespace-nowrap">{r.sistema}</td>
-											<td className="px-3 py-3 hidden sm:table-cell">{r.qtdLicenca}</td>
-											<td className="px-3 py-3 hidden sm:table-cell">{r.qtdDiaLiberacao}</td>
-											<td className="px-3 py-3 whitespace-nowrap">{r.status}</td>
-										</tr>
-									))}
+						{/* LISTA MOBILE */}
+						<MobileList />
 
-									{pageData.length === 0 && (
-										<tr>
-											<td className="px-3 py-8 text-center text-gray-500" colSpan={6}>Nenhum registro encontrado.</td>
+						{/* TABELA (sm+) */}
+						<div className="hidden sm:block rounded-xl bg-white shadow overflow-hidden">
+							<div className="w-full overflow-x-auto">
+								<table className="min-w-full border-separate border-spacing-0 text-sm">
+									<thead>
+										<tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+											<th className="px-3 py-3 w-28 text-center whitespace-nowrap">Ações</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("cliente")}>
+												Cliente {sortKey === "cliente" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("sistema")}>
+												Sistema {sortKey === "sistema" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("qtdLicenca")}>
+												Qtd. Licença {sortKey === "qtdLicenca" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("qtdDiaLiberacao")}>
+												Qtd. Dia Liberação {sortKey === "qtdDiaLiberacao" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("status")}>
+												Status {sortKey === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
 										</tr>
-									)}
-								</tbody>
-							</table>
+									</thead>
+
+									<tbody className="text-gray-900">
+										{pageData.map((r, idx) => (
+											<tr key={r.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-100"}>
+												<td className="px-3 py-3">
+													<div className="flex items-center justify-center gap-2">
+														<button
+															onClick={() => handleEdit(r.id)}
+															className="rounded-xl bg-yellow-400 text-white font-semibold w-7 h-7 hover:bg-yellow-500 transition-transform transform hover:scale-110"
+															title="Editar"
+															aria-label={`Editar ${nomeCliente(r.clienteId)}`}
+														>
+															✎
+														</button>
+														<button
+															onClick={() => handleDelete(r.id)}
+															className="rounded-xl bg-red-500 text-white font-semibold w-7 h-7 hover:bg-red-600 transition-transform transform hover:scale-110"
+															title="Excluir"
+															aria-label={`Excluir ${nomeCliente(r.clienteId)}`}
+														>
+															✖
+														</button>
+													</div>
+												</td>
+
+												<td className="px-3 py-3 text-center max-w-[18rem] truncate" title={nomeCliente(r.clienteId)}>
+													{nomeCliente(r.clienteId)}
+												</td>
+												<td className="px-3 py-3 whitespace-nowrap text-center">{r.sistema}</td>
+												<td className="px-3 py-3 whitespace-nowrap text-center">{r.qtdLicenca}</td>
+												<td className="px-3 py-3 whitespace-nowrap text-center">{r.qtdDiaLiberacao}</td>
+												<td className="px-3 py-3 whitespace-nowrap text-center">{r.status}</td>
+											</tr>
+										))}
+
+										{pageData.length === 0 && (
+											<tr>
+												<td className="px-3 py-8 text-center text-gray-500" colSpan={6}>
+													Nenhum registro encontrado.
+												</td>
+											</tr>
+										)}
+									</tbody>
+								</table>
+							</div>
 						</div>
 
 						{/* Paginação */}
 						<div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-black">
-							<div className="text-sm text-gray-700">{filtered.length} registro(s) • Página {page} de {totalPages}</div>
-							<div className="flex items-center gap-2">
-								<button className="rounded-md border bg-blue-600 text-white px-3 py-2 text-sm shadow-sm hover:bg-blue-800 transition hover:scale-105" onClick={() => setPage(1)} disabled={page === 1}>‹‹</button>
-								<button className="rounded-md border bg-blue-600 text-white px-3 py-2 text-sm shadow-sm hover:bg-blue-800 transition hover:scale-105" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>‹</button>
-								<button className="rounded-md border bg-blue-600 text-white px-3 py-2 text-sm shadow-sm hover:bg-blue-800 transition hover:scale-105" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>›</button>
-								<button className="rounded-md border bg-blue-600 text-white px-3 py-2 text-sm shadow-sm hover:bg-blue-800 transition hover:scale-105" onClick={() => setPage(totalPages)} disabled={page === totalPages}>››</button>
+							<div className="text-sm text-gray-700">
+								{filtered.length} registro(s) • Página {page} de {totalPages}
+							</div>
+							<div className="flex items-center gap-2" role="navigation" aria-label="Paginação">
+								<button
+									className="rounded-xl border border-gray-200 bg-white text-blue-500 px-2 py-2 w-9 h-9 text-sm shadow-sm transform transition-transform hover:scale-110"
+									onClick={() => setPage(1)}
+									disabled={page === 1}
+									aria-label="Primeira página"
+								>
+									⏪
+								</button>
+								<button
+									className="rounded-xl border border-gray-200 bg-white text-blue-500 px-2 py-2 w-9 h-9 text-sm shadow-sm transform transition-transform hover:scale-110"
+									onClick={() => setPage((p) => Math.max(1, p - 1))}
+									disabled={page === 1}
+									aria-label="Página anterior"
+								>
+									◀
+								</button>
+								<button
+									className="rounded-xl border border-gray-200 bg-white text-blue-500 px-2 py-2 w-9 h-9 text-sm shadow-sm transform transition-transform hover:scale-110"
+									onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+									disabled={page === totalPages}
+									aria-label="Próxima página"
+								>
+									▶
+								</button>
+								<button
+									className="rounded-xl border border-gray-200 bg-white text-blue-500 px-2 py-2 w-9 h-9 text-sm shadow-sm transform transition-transform hover:scale-110"
+									onClick={() => setPage(totalPages)}
+									aria-label="Última página"
+								>
+									⏩
+								</button>
 							</div>
 						</div>
 					</main>
@@ -419,8 +580,8 @@ export default function ControleDeSistemaPage() {
 						</div>
 
 						<div className="mt-6 flex justify-end gap-2">
-							<button onClick={handleSave} className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition">Gravar</button>
-							<button onClick={handleCancel} className="rounded-md bg-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-300 transition">Cancelar</button>
+							<button onClick={handleCancel} className="rounded-xl bg-red-400 px-4 py-2 text-white hover:bg-red-500 transform transition-transform hover:scale-105">Cancelar</button>
+							<button onClick={handleSave} className="rounded-xl bg-green-500 px-4 py-2 text-white hover:bg-green-600 transform transition-transform hover:scale-105">Gravar</button>
 						</div>
 					</div>
 				</div>

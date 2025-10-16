@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { toCSV, downloadCSV } from "../../helpers/export";
 
 /* ========= tipos ========= */
@@ -9,7 +9,7 @@ export type Cliente = {
 	codigo: number;
 	razaoSocial: string;
 	cnpj: string;
-	dataRegistro: string;
+	dataRegistro: string; // dd/mm/yyyy
 	contato: string;
 	telefone: string;
 	email: string;
@@ -27,7 +27,7 @@ const data_teste: Cliente[] = [
 
 /* ========= helpers visuais ========= */
 function formatCNPJ(v: string) {
-	const s = v.replace(/\D/g, "").slice(0, 14);
+	const s = (v || "").replace(/\D/g, "").slice(0, 14);
 	return s
 		.replace(/^(\d{2})(\d)/, "$1.$2")
 		.replace(/^(\d{2}\.\d{3})(\d)/, "$1.$2")
@@ -35,7 +35,7 @@ function formatCNPJ(v: string) {
 		.replace(/^(\d{2}\.\d{3}\.\d{3}\/\d{4})(\d{1,2}).*$/, "$1-$2");
 }
 function formatPhone(v: string) {
-	const s = v.replace(/\D/g, "").slice(0, 11);
+	const s = (v || "").replace(/\D/g, "").slice(0, 11);
 	if (s.length <= 10) {
 		return s.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d{4})$/, "$1-$2");
 	}
@@ -51,18 +51,22 @@ function isValidCNPJ(cnpjRaw: string) {
 	const cnpj = (cnpjRaw || "").replace(/\D/g, "");
 	if (cnpj.length !== 14) return false;
 	if (/^(\d)\1{13}$/.test(cnpj)) return false;
-	const calcDV = (base: string) => {
-		const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-		const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-		const arr = base.split("").map(n => parseInt(n, 10));
-		const d1 = 11 - (arr.slice(0, 12).reduce((acc, n, i) => acc + n * pesos1[i], 0) % 11);
-		const dv1 = d1 >= 10 ? 0 : d1;
-		const d2 = 11 - ([...arr.slice(0, 12), dv1].reduce((acc, n, i) => acc + n * pesos2[i], 0) % 11);
-		const dv2 = d2 >= 10 ? 0 : d2;
-		return `${dv1}${dv2}`;
-	};
-	const dv = calcDV(cnpj);
-	return cnpj.slice(-2) === dv;
+	const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+	const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+	const arr = cnpj.split("").map((n) => parseInt(n, 10));
+	const d1 = 11 - (arr.slice(0, 12).reduce((acc, n, i) => acc + n * pesos1[i], 0) % 11);
+	const dv1 = d1 >= 10 ? 0 : d1;
+	const d2 = 11 - ([...arr.slice(0, 12), dv1].reduce((acc, n, i) => acc + n * pesos2[i], 0) % 11);
+	const dv2 = d2 >= 10 ? 0 : d2;
+	return cnpj.slice(-2) === `${dv1}${dv2}`;
+}
+
+/* ========= helpers de ordenação ========= */
+function parseBRDate(d: string) {
+	const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d || "");
+	if (!m) return 0;
+	const [_, dd, mm, yyyy] = m;
+	return new Date(Number(yyyy), Number(mm) - 1, Number(dd)).getTime();
 }
 
 /* ========= componente ========= */
@@ -86,7 +90,7 @@ export default function ClientesPage() {
 	const [editForm, setEditForm] = useState<Partial<Cliente>>({});
 	const [errors, setErrors] = useState<{ cnpj?: string; email?: string }>({});
 
-	/* busca */
+	/* busca + ordenação */
 	const filtered = useMemo<Cliente[]>(() => {
 		const q = query.trim().toLowerCase();
 		let data = rows.filter((r) =>
@@ -95,13 +99,20 @@ export default function ClientesPage() {
 				.toLowerCase()
 				.includes(q)
 		);
+
 		if (sortKey && sortDir) {
 			data = [...data].sort((a, b) => {
-				const va = String(a[sortKey] ?? "").toLowerCase();
-				const vb = String(b[sortKey] ?? "").toLowerCase();
-				if (va < vb) return sortDir === "asc" ? -1 : 1;
-				if (va > vb) return sortDir === "asc" ? 1 : -1;
-				return 0;
+				let cmp = 0;
+				if (sortKey === "codigo") {
+					cmp = (a.codigo ?? 0) - (b.codigo ?? 0);
+				} else if (sortKey === "dataRegistro") {
+					cmp = parseBRDate(a.dataRegistro ?? "") - parseBRDate(b.dataRegistro ?? "");
+				} else {
+					const va = String(a[sortKey] ?? "").toLowerCase();
+					const vb = String(b[sortKey] ?? "").toLowerCase();
+					cmp = va < vb ? -1 : va > vb ? 1 : 0;
+				}
+				return sortDir === "asc" ? cmp : -cmp;
 			});
 		}
 		return data;
@@ -110,6 +121,11 @@ export default function ClientesPage() {
 	const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 	const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+	/* mantém a página válida quando o filtro muda */
+	useEffect(() => {
+		setPage((p) => Math.min(p, totalPages));
+	}, [totalPages]);
+
 	function toggleSort(key: SortKey) {
 		if (sortKey !== key) {
 			setSortKey(key);
@@ -117,19 +133,21 @@ export default function ClientesPage() {
 			return;
 		}
 		if (sortDir === "asc") setSortDir("desc");
-		else if (sortDir === "desc") { setSortKey(null); setSortDir(null); }
-		else setSortDir("asc");
+		else if (sortDir === "desc") {
+			setSortKey(null);
+			setSortDir(null);
+		} else setSortDir("asc");
 	}
 
 	function handleDelete(id: number) {
-		const alvo = rows.find(r => r.id === id);
+		const alvo = rows.find((r) => r.id === id);
 		const nome = alvo?.razaoSocial ?? "este registro";
 		if (!window.confirm(`Tem certeza que deseja excluir ${nome}?`)) return;
-		setRows(prev => prev.filter(r => r.id !== id));
+		setRows((prev) => prev.filter((r) => r.id !== id));
 	}
 
 	function handleEditOpen(id: number) {
-		const c = rows.find(r => r.id === id);
+		const c = rows.find((r) => r.id === id);
 		if (!c) return;
 		setEditingId(id);
 		setEditForm({ ...c });
@@ -151,7 +169,6 @@ export default function ClientesPage() {
 
 		if (!email) errs.email = "Email é obrigatório.";
 		else if (!isValidEmail(email)) errs.email = "Email inválido.";
-
 		if (!cnpj) errs.cnpj = "CNPJ é obrigatório.";
 		else if (!isValidCNPJ(cnpj)) errs.cnpj = "CNPJ inválido.";
 
@@ -163,7 +180,7 @@ export default function ClientesPage() {
 		if (editingId === 0) {
 			const novo: Cliente = {
 				id: Date.now(),
-				codigo: editForm.codigo as number,
+				codigo: (editForm.codigo as number) ?? 0,
 				razaoSocial: editForm.razaoSocial ?? "",
 				cnpj,
 				dataRegistro: editForm.dataRegistro ?? new Date().toLocaleDateString("pt-BR"),
@@ -171,9 +188,11 @@ export default function ClientesPage() {
 				telefone: editForm.telefone ?? "",
 				email,
 			};
-			setRows(prev => [novo, ...prev]);
+			setRows((prev) => [novo, ...prev]);
 		} else {
-			setRows(prev => prev.map(r => r.id === editingId ? { ...r, ...editForm, email, cnpj } as Cliente : r));
+			setRows((prev) =>
+				prev.map((r) => (r.id === editingId ? ({ ...r, ...editForm, email, cnpj } as Cliente) : r))
+			);
 		}
 		setEditingId(null);
 		setEditForm({});
@@ -183,7 +202,7 @@ export default function ClientesPage() {
 	function handleAdd() {
 		setEditingId(0);
 		setEditForm({
-			codigo: rows.length ? Math.max(...rows.map(r => r.codigo)) + 1 : 1,
+			codigo: rows.length ? Math.max(...rows.map((r) => r.codigo)) + 1 : 1,
 			razaoSocial: "",
 			cnpj: "",
 			dataRegistro: new Date().toLocaleDateString("pt-BR"),
@@ -200,6 +219,65 @@ export default function ClientesPage() {
 		downloadCSV(csv, nome);
 	}
 
+	function handlePrint() {
+		window.print();
+	}
+
+	/* ====== LISTA MOBILE ====== */
+	const MobileList = () => (
+		<ul className="sm:hidden space-y-3">
+			{pageData.map((r) => (
+				<li key={r.id} className="rounded-xl border bg-white p-4 shadow">
+					{/* header do card com ações à direita */}
+					<div className="flex items-start gap-3">
+						<div className="min-w-0 flex-1">
+							<div className="text-sm text-gray-500">Código {r.codigo}</div>
+							<div className="font-medium text-gray-900 break-words">{r.razaoSocial}</div>
+						</div>
+					  
+						<div className="flex items-start gap-1">
+							<button
+								onClick={() => handleEditOpen(r.id)}
+								className="inline-flex items-center justify-center rounded-xl bg-yellow-400 w-7 h-7 text-white font-semibold hover:bg-yellow-500 transition-transform transform hover:scale-110"
+								aria-label={`Editar ${r.razaoSocial}`}
+								title="Editar"
+							>
+								✎
+							</button>
+							<button
+								onClick={() => handleDelete(r.id)}
+								className="inline-flex items-center justify-center rounded-xl bg-red-500 w-7 h-7 text-white font-semibold hover:bg-red-600 transition-transform transform hover:scale-110"
+								aria-label={`Excluir ${r.razaoSocial}`}
+								title="Excluir"
+							>
+								✖
+							</button>
+						</div>
+					</div>
+
+					{/* conteúdo */}
+					<div className="mt-2 grid grid-cols-1 gap-1 text-sm text-gray-700">
+						<div><span className="text-gray-500">CNPJ:</span> {formatCNPJ(r.cnpj)}</div>
+						<div><span className="text-gray-500">Data:</span> {r.dataRegistro}</div>
+						<div><span className="text-gray-500">Contato:</span> {r.contato}</div>
+						<div><span className="text-gray-500">Telefone:</span> {formatPhone(r.telefone)}</div>
+						<div className="break-all">
+							<span className="text-gray-500">Email:</span>{" "}
+							{isValidEmail(r.email) ? (
+								<a href={`mailto:${r.email}`} className="underline underline-offset-2">{r.email}</a>
+							) : (
+								<span className="text-gray-400">—</span>
+							)}
+						</div>
+					</div>
+				</li>
+			))}
+			{pageData.length === 0 && (
+				<li className="rounded-xl border bg-white p-8 text-center text-gray-500">Nenhum registro encontrado.</li>
+			)}
+		</ul>
+	);
+
 	return (
 		<div className="min-h-screen bg-gray-50">
 			<div className="flex">
@@ -207,7 +285,7 @@ export default function ClientesPage() {
 				<aside className="hidden sm:flex sm:flex-col sm:w-64 sm:min-h-screen sm:sticky sm:top-0 sm:bg-white sm:shadow sm:border-r">
 					<div className="bg-gradient-to-r from-blue-700 to-blue-500 p-4 text-white">
 						<div className="flex items-center gap-3">
-							<div className="font-semibold flex-1 text-center">AWSRegistro • Painel</div>
+							<div className="font-semibold flex-1 text-center">AWSRegistro | Painel</div>
 						</div>
 					</div>
 
@@ -235,9 +313,14 @@ export default function ClientesPage() {
 				{openSidebar && (
 					<div className="fixed inset-0 z-40 sm:hidden" aria-hidden="true" onClick={() => setOpenSidebar(false)}>
 						<div className="absolute inset-0 bg-black/40" />
-						<div className="absolute left-0 top-0 h-full w-64 bg-white shadow-lg" onClick={(e) => e.stopPropagation()}>
+						<div
+							className="absolute left-0 top-0 h-full w-64 bg-white shadow-lg"
+							onClick={(e) => e.stopPropagation()}
+							role="dialog"
+							aria-label="Menu"
+						>
 							<div className="bg-gradient-to-r from-blue-700 to-blue-500 p-4 text-white">
-								<div className="font-semibold">AWS • Painel</div>
+								<div className="font-semibold">AWSRegistro | Painel</div>
 							</div>
 							<nav className="p-3">
 								<a href="/clientes" className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200">
@@ -253,133 +336,209 @@ export default function ClientesPage() {
 				{/* área principal */}
 				<div className="flex-1">
 					{/* topo mobile */}
-					<div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 sm:hidden">
+					<div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 sm:hidden">
 						<button
-							className="rounded-md border px-3 py-2 text-sm shadow transition-transform hover:scale-105"
+							className="rounded-xl border px-3 py-2 text-sm shadow transition-transform hover:scale-105"
 							onClick={() => setOpenSidebar(true)}
 							aria-label="Abrir menu"
 						>
 							☰
 						</button>
-						<div className="ml-1 font-semibold">AWSRegistro | Painel</div>
+						<div className="ml-1 flex-1 text-center font-semibold text-white">AWSRegistro | Painel</div>
 					</div>
 
 					<main className="mx-auto max-w-7xl p-4 md:p-6">
-						<h1 className="mb-6 text-2xl sm:text-3xl font-semibold text-gray-800">Cliente</h1>
+						<h1 className="mb-4 text-2xl sm:text-3xl font-semibold text-gray-800">Cliente</h1>
 
-						{/* ações + busca */}
-						<div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-							<div className="flex flex-wrap items-center gap-2 text-black">
-								<button onClick={handleAdd} className="rounded-md bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-105">➕ Adicionar</button>
-								<button className="rounded-md bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-105" onClick={handleExport}>⬇️ Exportar</button>
-								<button className="rounded-md bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-105">🖨️ Imprimir</button>
-							</div>
-
-							<div className="flex items-center gap-2">
+						{/* busca + ações (mobile e desktop separados) */}
+						<div className="mb-4 space-y-2">
+							{/* MOBILE: input + botões compactos */}
+							<div className="flex items-center gap-2 sm:hidden">
 								<input
 									type="text"
 									placeholder="Pesquisa rápida"
 									value={query}
 									onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-									className="w-full sm:w-64 rounded-md border text-black border-gray-300 bg-white px-3 py-2 text-sm"
+									className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 placeholder:text-gray-500 text-md shadow"
 								/>
-								<button className="rounded-md bg-white px-3 py-2 text-sm shadow">🔍</button>
-								<button className="rounded-md bg-white px-3 py-2 text-sm shadow">⚙️</button>
+								<button
+									onClick={handleAdd}
+									className="inline-flex items-center bg-white border border-gray-200 justify-center w-10 h-10 rounded-lg text-white shadow transform transition-transform hover:scale-105"
+									title="Adicionar"
+									aria-label="Adicionar"
+								>
+									➕
+								</button>
+								<button
+									onClick={handleExport}
+									className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 bg-white text-blue-600 shadow transform transition-transform hover:scale-105"
+									title="Exportar CSV"
+									aria-label="Exportar CSV"
+								>
+									⬇️
+								</button>
+							</div>
+
+							{/* DESKTOP: mantém botões com texto */}
+							<div className="hidden sm:flex sm:items-center sm:justify-between">
+								<div className="flex w-full items-center gap-2">
+									<input
+										type="text"
+										placeholder="Pesquisa rápida"
+										value={query}
+										onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+										className="rounded-xl w-full sm:w-72 rounded-xl border border-gray-200 placeholder:text-gray-500 bg-white px-3 py-2 text-md text-gray-600 shadow"
+									/>
+									<button
+										onClick={handleAdd}
+										className="rounded-xl px-3 py-2 border border-gray-200 bg-white text-sm font-medium text-gray-600 shadow transform transition-transform hover:scale-105"
+										title="Adicionar"
+										aria-label="Adicionar"
+									>
+										➕ Adicionar
+									</button>
+									<button
+										onClick={handleExport}
+										className="rounded-xl px-3 py-2 border border-gray-200 bg-white text-sm font-medium text-gray-600 shadow transform transition-transform hover:scale-105"
+										title="Exportar"
+										aria-label="Exportar"
+									>
+										⬇️ Exportar CSV
+									</button>
+								</div>
 							</div>
 						</div>
 
-						{/* tabela simples (sem scroll lateral) */}
-						<div className="rounded-xl bg-white shadow overflow-hidden">
-							<table className="w-full border-separate border-spacing-0 text-xs sm:text-sm">
-								<thead>
-									<tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
-										<th className="px-3 py-3 w-28 text-left whitespace-nowrap">Ações</th>
-										<th className="px-3 py-3 w-20 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("codigo")}>
-											Código {sortKey === "codigo" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="px-3 py-3 text-left whitespace-nowrap cursor-pointer" onClick={() => toggleSort("razaoSocial")}>
-											Razão Social {sortKey === "razaoSocial" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("cnpj")}>
-											CNPJ {sortKey === "cnpj" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer" onClick={() => toggleSort("dataRegistro")}>
-											Data Registro {sortKey === "dataRegistro" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer" onClick={() => toggleSort("contato")}>
-											Contato {sortKey === "contato" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer" onClick={() => toggleSort("telefone")}>
-											Telefone {sortKey === "telefone" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-										<th className="px-3 py-3 whitespace-nowrap hidden sm:table-cell cursor-pointer" onClick={() => toggleSort("email")}>
-											Email {sortKey === "email" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-										</th>
-									</tr>
-								</thead>
+						{/* LISTA MOBILE */}
+						<MobileList />
 
-								<tbody className="text-gray-900">
-									{pageData.map((r, idx) => (
-										<tr key={r.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-100"}>
-											<td className="px-3 py-3">
-												<div className="flex items-center justify-center gap-2">
-													<button
-														onClick={() => handleEditOpen(r.id)}
-														className="rounded-md border text-white bg-yellow-400 px-2 py-1 hover:bg-yellow-500 transition"
-														title="Editar"
-													>
-														✎
-													</button>
-													<button
-														onClick={() => handleDelete(r.id)}
-														className="rounded-md border bg-red-500 text-white px-2 py-1 hover:bg-red-600 transition"
-														title="Excluir"
-													>
-														✖
-													</button>
-												</div>
-											</td>
-
-											<td className="px-3 py-3 whitespace-nowrap text-center tabular-nums">{r.codigo}</td>
-
-											<td
-												className="px-3 py-3 text-left max-w-[10rem] truncate sm:max-w-none sm:whitespace-normal"
-												title={r.razaoSocial}
-											>
-												{r.razaoSocial}
-											</td>
-
-											<td className="px-3 py-3 whitespace-nowrap text-center">{formatCNPJ(r.cnpj)}</td>
-											<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">{r.dataRegistro}</td>
-											<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">{r.contato}</td>
-											<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">{formatPhone(r.telefone)}</td>
-											<td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">
-												<a href={`mailto:${r.email}`} className="underline-offset-2 hover:underline">
-													{r.email}
-												</a>
-											</td>
+						{/* TABELA (sm+) */}
+						<div className="hidden sm:block rounded-xl bg-white shadow overflow-hidden">
+							<div className="w-full overflow-x-auto">
+								<table className="min-w-full border-separate border-spacing-0 text-sm">
+									<thead>
+										<tr className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+											<th className="px-3 py-3 w-28 text-center whitespace-nowrap">Ações</th>
+											<th className="px-3 py-3 w-20 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("codigo")}>
+												Código {sortKey === "codigo" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("razaoSocial")}>
+												Razão Social {sortKey === "razaoSocial" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("cnpj")}>
+												CNPJ {sortKey === "cnpj" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("dataRegistro")}>
+												Data Registro {sortKey === "dataRegistro" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("contato")}>
+												Contato {sortKey === "contato" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("telefone")}>
+												Telefone {sortKey === "telefone" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
+											<th className="px-3 py-3 text-center whitespace-nowrap cursor-pointer" onClick={() => toggleSort("email")}>
+												Email {sortKey === "email" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+											</th>
 										</tr>
-									))}
+									</thead>
 
-									{pageData.length === 0 && (
-										<tr>
-											<td className="px-3 py-8 text-center text-gray-500" colSpan={8}>
-												Nenhum registro encontrado.
-											</td>
-										</tr>
-									)}
-								</tbody>
-							</table>
+									<tbody className="text-gray-900">
+										{pageData.map((r, idx) => (
+											<tr key={r.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-100"}>
+												<td className="px-3 py-3">
+													<div className="flex items-center justify-center gap-2">
+														<button
+															onClick={() => handleEditOpen(r.id)}
+															className="rounded-xl bg-yellow-400 text-white font-semibold w-7 h-7 hover:bg-yellow-500 transition-transform transform hover:scale-110"
+															title="Editar"
+															aria-label={`Editar ${r.razaoSocial}`}
+														>
+															✎
+														</button>
+														<button
+															onClick={() => handleDelete(r.id)}
+															className="rounded-xl bg-red-400 text-white font-semibold w-7 h-7 hover:bg-red-600 transition-transform transform hover:scale-110"
+															title="Excluir"
+															aria-label={`Excluir ${r.razaoSocial}`}
+														>
+															✖
+														</button>
+													</div>
+												</td>
+
+												<td className="px-3 py-3 whitespace-nowrap text-center tabular-nums">{r.codigo}</td>
+
+												<td className="px-3 py-3 text-center max-w-[18rem] truncate" title={r.razaoSocial}>
+													{r.razaoSocial}
+												</td>
+
+												<td className="px-3 py-3 whitespace-nowrap text-center">{formatCNPJ(r.cnpj)}</td>
+												<td className="px-3 py-3 whitespace-nowrap text-center">{r.dataRegistro}</td>
+												<td className="px-3 py-3 whitespace-nowrap text-center">{r.contato}</td>
+												<td className="px-3 py-3 whitespace-nowrap text-center">{formatPhone(r.telefone)}</td>
+												<td className="px-3 py-3 whitespace-nowrap text-center">
+													{isValidEmail(r.email) ? (
+														<a href={`mailto:${r.email}`} className="underline-offset-2 hover:underline">
+															{r.email}
+														</a>
+													) : (
+														<span className="text-gray-400">—</span>
+													)}
+												</td>
+											</tr>
+										))}
+
+										{pageData.length === 0 && (
+											<tr>
+												<td className="px-3 py-8 text-center text-gray-500" colSpan={8}>
+													Nenhum registro encontrado.
+												</td>
+											</tr>
+										)}
+									</tbody>
+								</table>
+							</div>
 						</div>
 
 						{/* paginação */}
 						<div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-black">
-							<div className="text-sm text-gray-700">{filtered.length} registro(s) • Página {page} de {totalPages}</div>
-							<div className="flex items-center gap-2">
-								<button className="rounded-md border bg-blue-600 text-white px-3 py-2 text-sm shadow-sm hover:bg-blue-800 transition hover:scale-105" onClick={() => setPage(1)} disabled={page === 1}>‹‹</button>
-								<button className="rounded-md border bg-blue-600 text-white px-3 py-2 text-sm shadow-sm hover:bg-blue-800 transition hover:scale-105" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>‹</button>
-								<button className="rounded-md border bg-blue-600 text-white px-3 py-2 text-sm shadow-sm hover:bg-blue-800 transition hover:scale-105" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>›</button>
-								<button className="rounded-md border bg-blue-600 text-white px-3 py-2 text-sm shadow-sm hover:bg-blue-800 transition hover:scale-105" onClick={() => setPage(totalPages)} disabled={page === totalPages}>››</button>
+							<div className="text-sm text-gray-700">
+								{filtered.length} registro(s) • Página {page} de {totalPages}
+							</div>
+							<div className="flex items-center gap-2" role="navigation" aria-label="Paginação">
+								<button
+									className="rounded-xl border border-gray-200 bg-white text-blue-500 px-2 py-2 w-9 h-9 text-sm shadow-sm transform transition-transform hover:scale-110"
+									onClick={() => setPage(1)}
+									disabled={page === 1}
+									aria-label="Primeira página"
+								>
+									⏪
+								</button>
+								<button
+									className="rounded-xl border border-gray-200 bg-white text-blue-500 px-2 py-2 w-9 h-9 text-sm shadow-sm transform transition-transform hover:scale-110"
+									onClick={() => setPage((p) => Math.max(1, p - 1))}
+									disabled={page === 1}
+									aria-label="Página anterior"
+								>
+									◀
+								</button>
+								<button
+									className="rounded-xl border border-gray-200 bg-white text-blue-500 px-2 py-2 w-9 h-9 text-sm shadow-sm transform transition-transform hover:scale-110"
+									onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+									disabled={page === totalPages}
+									aria-label="Próxima página"
+								>
+									▶
+								</button>
+								<button
+									className="rounded-xl border border-gray-200 bg-white text-blue-500 px-2 py-2 w-9 h-9 text-sm shadow-sm transform transition-transform hover:scale-110"
+									onClick={() => setPage(totalPages)}
+									disabled={page === totalPages}
+									aria-label="Última página"
+								>
+									⏩
+								</button>
 							</div>
 						</div>
 					</main>
@@ -400,7 +559,7 @@ export default function ClientesPage() {
 								<input
 									type="number"
 									value={String(editForm.codigo ?? "")}
-									onChange={(e) => setEditForm(prev => ({ ...prev, codigo: Number(e.target.value) }))}
+									onChange={(e) => setEditForm((prev) => ({ ...prev, codigo: Number(e.target.value) }))}
 									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
 								/>
 							</label>
@@ -410,7 +569,7 @@ export default function ClientesPage() {
 								<input
 									type="text"
 									value={editForm.razaoSocial ?? ""}
-									onChange={(e) => setEditForm(prev => ({ ...prev, razaoSocial: e.target.value }))}
+									onChange={(e) => setEditForm((prev) => ({ ...prev, razaoSocial: e.target.value }))}
 									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
 								/>
 							</label>
@@ -422,13 +581,13 @@ export default function ClientesPage() {
 									value={editForm.cnpj ?? ""}
 									onChange={(e) => {
 										const digits = e.target.value.replace(/\D/g, "").slice(0, 14);
-										setEditForm(prev => ({ ...prev, cnpj: digits }));
-										if (!digits) setErrors(prev => ({ ...prev, cnpj: "CNPJ é obrigatório." }));
-										else if (!isValidCNPJ(digits)) setErrors(prev => ({ ...prev, cnpj: "CNPJ inválido." }));
-										else setErrors(prev => ({ ...prev, cnpj: undefined }));
+										setEditForm((prev) => ({ ...prev, cnpj: digits }));
+										if (!digits) setErrors((prev) => ({ ...prev, cnpj: "CNPJ é obrigatório." }));
+										else if (!isValidCNPJ(digits)) setErrors((prev) => ({ ...prev, cnpj: "CNPJ inválido." }));
+										else setErrors((prev) => ({ ...prev, cnpj: undefined }));
 									}}
 									onBlur={() => {
-										setEditForm(prev => ({ ...prev, cnpj: formatCNPJ(prev.cnpj ?? "") }));
+										setEditForm((prev) => ({ ...prev, cnpj: formatCNPJ(prev.cnpj ?? "") }));
 									}}
 									className={`w-full rounded border px-3 py-2 text-sm ${errors.cnpj ? "border-red-500" : "border-gray-300"} text-black`}
 								/>
@@ -440,8 +599,9 @@ export default function ClientesPage() {
 								<input
 									type="text"
 									value={editForm.dataRegistro ?? ""}
-									onChange={(e) => setEditForm(prev => ({ ...prev, dataRegistro: e.target.value }))}
+									onChange={(e) => setEditForm((prev) => ({ ...prev, dataRegistro: e.target.value }))}
 									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+									placeholder="dd/mm/aaaa"
 								/>
 							</label>
 
@@ -450,7 +610,7 @@ export default function ClientesPage() {
 								<input
 									type="text"
 									value={editForm.contato ?? ""}
-									onChange={(e) => setEditForm(prev => ({ ...prev, contato: e.target.value }))}
+									onChange={(e) => setEditForm((prev) => ({ ...prev, contato: e.target.value }))}
 									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
 								/>
 							</label>
@@ -460,7 +620,7 @@ export default function ClientesPage() {
 								<input
 									type="text"
 									value={editForm.telefone ?? ""}
-									onChange={(e) => setEditForm(prev => ({ ...prev, telefone: e.target.value }))}
+									onChange={(e) => setEditForm((prev) => ({ ...prev, telefone: e.target.value }))}
 									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
 								/>
 							</label>
@@ -472,10 +632,10 @@ export default function ClientesPage() {
 									value={editForm.email ?? ""}
 									onChange={(e) => {
 										const v = e.target.value;
-										setEditForm(prev => ({ ...prev, email: v }));
-										if (!v) setErrors(prev => ({ ...prev, email: "Email é obrigatório." }));
-										else if (!isValidEmail(v)) setErrors(prev => ({ ...prev, email: "Email inválido." }));
-										else setErrors(prev => ({ ...prev, email: undefined }));
+										setEditForm((prev) => ({ ...prev, email: v }));
+										if (!v) setErrors((prev) => ({ ...prev, email: "Email é obrigatório." }));
+										else if (!isValidEmail(v)) setErrors((prev) => ({ ...prev, email: "Email inválido." }));
+										else setErrors((prev) => ({ ...prev, email: undefined }));
 									}}
 									className={`w-full rounded border px-3 py-2 text-sm ${errors.email ? "border-red-500" : "border-gray-300"} text-black`}
 								/>
@@ -484,8 +644,8 @@ export default function ClientesPage() {
 						</div>
 
 						<div className="mt-6 flex justify-end gap-2">
-							<button onClick={handleEditCancel} className="rounded-md bg-red-400 px-4 py-2 text-white hover:bg-red-500 hover:scale-105 transition">Cancelar</button>
-							<button onClick={handleEditSave} className="rounded-md bg-green-500 px-4 py-2 text-white hover:bg-green-600 hover:scale-105 transition">Salvar</button>
+							<button onClick={handleEditCancel} className="rounded-xl bg-red-400 px-4 py-2 text-white hover:bg-red-500 transform transition-transform hover:scale-105">Cancelar</button>
+							<button onClick={handleEditSave} className="rounded-xl bg-green-500 px-4 py-2 text-white hover:bg-green-600 transform transition-transform hover:scale-105">Salvar</button>
 						</div>
 					</div>
 				</div>

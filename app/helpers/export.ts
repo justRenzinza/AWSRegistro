@@ -59,3 +59,45 @@ export function downloadCSV(csv: string, filename = "clientes.csv") {
 	a.remove();
 	URL.revokeObjectURL(url);
 }
+
+// ---- mantém suas funções existentes (toCSV de Clientes e downloadCSV) ----
+
+// Tipo mínimo para export do Controle de Sistema (evita import cíclico)
+type ControleSistemaLike = {
+	clienteId: number;
+	sistema: string;
+	qtdLicenca: number;
+	qtdDiaLiberacao: number;
+	status: string;
+};
+
+/**
+ * CSV do Controle de Sistema
+ * Colunas: Cliente; Sistema; Qtd. Licença; Qtd. Dia Liberação; Status
+ */
+export function toCSVControleSistema(
+	rows: ControleSistemaLike[],
+	resolveClienteNome: (id: number) => string
+): string {
+	const header = [
+		"Cliente",
+		"Sistema",
+		"Qtd. Licença",
+		"Qtd. Dia Liberação",
+		"Status",
+	];
+
+	const body = rows.map((r) => {
+		const cols = [
+			resolveClienteNome(r.clienteId),
+			r.sistema,
+			r.qtdLicenca,
+			r.qtdDiaLiberacao,
+			r.status,
+		].map((val) => `"${String(val ?? "").replace(/"/g, '""')}"`);
+		return cols.join(";");
+	});
+
+	// BOM para abrir certinho no Excel/LibreOffice PT-BR
+	return "\uFEFF" + header.join(";") + "\n" + body.join("\n");
+}
