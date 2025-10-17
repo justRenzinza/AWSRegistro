@@ -266,11 +266,11 @@ export default function ControleDeSistemaPage() {
 					</div>
 
 					<nav className="flex-1 p-3">
-						<a href="/clientes" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Cliente</a>
-						<a href="/controle-sistema" className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200">
+						<a href="/clientes" className="mb-1 block font-semibold rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Clientes</a>
+						<a href="/controle-sistema" className="mb-1 flex font-semibold items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200">
 							<span>Controle de Sistema</span>
 						</a>
-						<a href="#" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle Registro</a>
+						<a href="#" className="mb-1 block font-semibold rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle Registro</a>
 					</nav>
 
 					<div className="p-3 text-sm text-gray-600">
@@ -298,11 +298,11 @@ export default function ControleDeSistemaPage() {
 								<div className="font-semibold">AWSRegistro | Painel</div>
 							</div>
 							<nav className="p-3">
-								<a href="/clientes" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Cliente</a>
-								<a href="/controle-sistema" className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200">
+								<a href="/clientes" className="mb-1 block font-semibold rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Clientes</a>
+								<a href="/controle-sistema" className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 font-semibold text-gray-900 bg-blue-50 border border-blue-200">
 									<span>Controle de Sistema</span>
 								</a>
-								<a href="#" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle Registro</a>
+								<a href="#" className="mb-1 block font-semibold rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle Registro</a>
 							</nav>
 						</div>
 					</div>
@@ -323,8 +323,6 @@ export default function ControleDeSistemaPage() {
 					</div>
 
 					<main className="mx-auto max-w-7xl p-4 md:p-6">
-						<h1 className="mb-4 text-2xl sm:text-3xl font-semibold text-gray-800">Controle de Sistema</h1>
-
 						{/* busca + ações (mobile e desktop separados) */}
 						<div className="mb-4 space-y-2">
 							{/* MOBILE: input + botões compactos */}

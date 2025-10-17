@@ -234,7 +234,7 @@ export default function ClientesPage() {
 							<div className="text-sm text-gray-500">Código {r.codigo}</div>
 							<div className="font-medium text-gray-900 break-words">{r.razaoSocial}</div>
 						</div>
-					  
+					
 						<div className="flex items-start gap-1">
 							<button
 								onClick={() => handleEditOpen(r.id)}
@@ -290,12 +290,12 @@ export default function ClientesPage() {
 					</div>
 
 					<nav className="flex-1 p-3">
-						<a href="/clientes" className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200">
-							<span>Cliente</span>
+						<a href="/clientes" className="mb-1 flex font-semibold items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200">
+							<span>Clientes</span>
 							<span className="text-xs text-blue-600"></span>
 						</a>
-						<a href="/controle-sistema" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle de Sistema</a>
-						<a href="#" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle Registro</a>
+						<a href="/controle-sistema" className="mb-1 block font-semibold rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle de Sistema</a>
+						<a href="#" className="mb-1 block font-semibold rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle Registro</a>
 					</nav>
 
 					<div className="p-3 text-sm text-gray-600">
@@ -317,17 +317,16 @@ export default function ClientesPage() {
 							className="absolute left-0 top-0 h-full w-64 bg-white shadow-lg"
 							onClick={(e) => e.stopPropagation()}
 							role="dialog"
-							aria-label="Menu"
 						>
 							<div className="bg-gradient-to-r from-blue-700 to-blue-500 p-4 text-white">
-								<div className="font-semibold">AWSRegistro | Painel</div>
+								<div className="font-semibold text-center">AWSRegistro | Painel</div>
 							</div>
 							<nav className="p-3">
-								<a href="/clientes" className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-200">
-									<span>Cliente</span>
+								<a href="/clientes" className="mb-1 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 bg-blue-50 border border-blue-200">
+									<span>Clientes</span>
 								</a>
-								<a href="/controle-sistema" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle de Sistema</a>
-								<a href="#" className="mb-1 block rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle Registro</a>
+								<a href="/controle-sistema" className="mb-1 block font-semibold rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle de Sistema</a>
+								<a href="#" className="mb-1 block font-semibold rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">Controle Registro</a>
 							</nav>
 						</div>
 					</div>
@@ -344,12 +343,10 @@ export default function ClientesPage() {
 						>
 							☰
 						</button>
-						<div className="ml-1 flex-1 text-center font-semibold text-white">AWSRegistro | Painel</div>
+						<div className="ml-1 flex-1 text-center font-semibold text-white">AWSRegistro | Clientes</div>
 					</div>
 
 					<main className="mx-auto max-w-7xl p-4 md:p-6">
-						<h1 className="mb-4 text-2xl sm:text-3xl font-semibold text-gray-800">Cliente</h1>
-
 						{/* busca + ações (mobile e desktop separados) */}
 						<div className="mb-4 space-y-2">
 							{/* MOBILE: input + botões compactos */}
