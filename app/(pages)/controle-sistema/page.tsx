@@ -80,6 +80,18 @@ export default function ControleDeSistemaPage() {
 	/* sidebar mobile */
 	const [openSidebar, setOpenSidebar] = useState(false);
 
+	/* trava/destrava scroll do fundo quando modal abre/fecha */
+	useEffect(() => {
+		if (editingId !== null) {
+			document.body.style.overflow = "hidden";
+		} else {
+			document.body.style.overflow = "";
+		}
+		return () => {
+			document.body.style.overflow = "";
+		};
+	}, [editingId]);
+
 	function toggleSort(key: SortKey) {
 		if (sortKey !== key) {
 			setSortKey(key);
@@ -204,7 +216,6 @@ export default function ControleDeSistemaPage() {
 		downloadCSV(csv, nome);
 	}
 
-
 	function handlePrint() {
 		window.print();
 	}
@@ -312,7 +323,7 @@ export default function ControleDeSistemaPage() {
 				<div className="flex-1">
 					{/* topo mobile */}
 					<div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 sm:hidden">
-						<button
+					     <button
 							className="rounded-xl border px-3 py-2 text-sm shadow transition-transform hover:scale-105"
 							onClick={() => setOpenSidebar(true)}
 							aria-label="Abrir menu"
@@ -501,85 +512,99 @@ export default function ControleDeSistemaPage() {
 
 			{/* -------------------- POPUP -------------------- */}
 			{editingId !== null && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
-					<div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-lg">
-						<h2 className="mb-4 text-xl font-semibold text-blue-700">
-							{editingId === 0 ? "Adicionar Registro" : "Editar Registro"}
-						</h2>
+				<div
+					className="fixed inset-0 z-50"
+					role="dialog"
+					aria-modal="true"
+					aria-label={editingId === 0 ? "Adicionar Registro" : "Editar Registro"}
+				>
+					{/* backdrop */}
+					<div className="absolute inset-0 bg-black/50" />
 
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<label className="text-sm md:col-span-2">
-								<span className="mb-1 block text-black">Cliente *</span>
-								<select
-									value={form.clienteId ?? clientes[0]?.id}
-									onChange={(e) => setForm(prev => ({ ...prev, clienteId: Number(e.target.value) }))}
-									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
-								>
-									{clientes.map(c => (
-										<option key={c.id} value={c.id}>{c.nome}</option>
-									))}
-								</select>
-							</label>
+					{/* wrapper full-screen no mobile; centralizado no desktop */}
+					<div className="absolute inset-0 flex items-stretch sm:items-center justify-center p-0 sm:p-3">
+						{/* card: ocupa toda a tela no mobile e rola internamente */}
+						<div className="h-full w-full sm:h-auto sm:w-full sm:max-w-2xl rounded-none sm:rounded-xl bg-white shadow-lg overflow-y-auto">
+							<h2 className="sticky top-0 z-10 px-6 py-4 text-xl font-semibold text-blue-700 bg-white border-b">
+								{editingId === 0 ? "Adicionar Registro" : "Editar Registro"}
+							</h2>
 
-							<label className="text-sm md:col-span-2">
-								<span className="mb-1 block text-black">Sistema *</span>
-								<select
-									value={form.sistema ?? sistemas[0]}
-									onChange={(e) => setForm(prev => ({ ...prev, sistema: e.target.value }))}
-									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
-								>
-									{sistemas.map(s => (
-										<option key={s} value={s}>{s}</option>
-									))}
-								</select>
-							</label>
+							<div className="p-6">
+								<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+									<label className="text-sm md:col-span-2">
+										<span className="mb-1 block text-black">Cliente *</span>
+										<select
+											value={form.clienteId ?? clientes[0]?.id}
+											onChange={(e) => setForm(prev => ({ ...prev, clienteId: Number(e.target.value) }))}
+											className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+										>
+											{clientes.map(c => (
+												<option key={c.id} value={c.id}>{c.nome}</option>
+											))}
+										</select>
+									</label>
 
-							<label className="text-sm">
-								<span className="mb-1 block text-black">Qtd. Licença *</span>
-								<input
-									type="number"
-									value={String(form.qtdLicenca ?? 0)}
-									onChange={(e) => setForm(prev => ({ ...prev, qtdLicenca: Number(e.target.value) }))}
-									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
-									min={0}
-								/>
-							</label>
+									<label className="text-sm md:col-span-2">
+										<span className="mb-1 block text-black">Sistema *</span>
+										<select
+											value={form.sistema ?? sistemas[0]}
+											onChange={(e) => setForm(prev => ({ ...prev, sistema: e.target.value }))}
+											className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+										>
+											{sistemas.map(s => (
+												<option key={s} value={s}>{s}</option>
+											))}
+										</select>
+									</label>
 
-							<label className="text-sm">
-								<span className="mb-1 block text-black">Qtd. Dia Liberação *</span>
-								<input
-									type="number"
-									value={String(form.qtdDiaLiberacao ?? 0)}
-									onChange={(e) => setForm(prev => ({ ...prev, qtdDiaLiberacao: Number(e.target.value) }))}
-									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
-									min={0}
-								/>
-							</label>
+									<label className="text-sm">
+										<span className="mb-1 block text-black">Qtd. Licença *</span>
+										<input
+											type="number"
+											value={String(form.qtdLicenca ?? 0)}
+											onChange={(e) => setForm(prev => ({ ...prev, qtdLicenca: Number(e.target.value) }))}
+											className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+											min={0}
+										/>
+									</label>
 
-							<label className="text-sm md:col-span-2">
-								<span className="mb-2 block text-black">Status *</span>
-								<div className="space-y-2 text-black">
-									{(["Regular",
-										"Irregular (Sem Restrição)",
-										"Irregular (Contrato Cancelado)",
-										"Irregular (Com Restrição)"] as StatusContrato[]).map(st => (
-										<label key={st} className="flex items-center gap-2">
-											<input
-												type="radio"
-												name="status"
-												checked={(form.status ?? "Regular") === st}
-												onChange={() => setForm(prev => ({ ...prev, status: st }))}
-											/>
-											<span>{st}</span>
-										</label>
-									))}
+									<label className="text-sm">
+										<span className="mb-1 block text-black">Qtd. Dia Liberação *</span>
+										<input
+											type="number"
+											value={String(form.qtdDiaLiberacao ?? 0)}
+											onChange={(e) => setForm(prev => ({ ...prev, qtdDiaLiberacao: Number(e.target.value) }))}
+											className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+											min={0}
+										/>
+									</label>
+
+									<label className="text-sm md:col-span-2">
+										<span className="mb-2 block text-black">Status *</span>
+										<div className="space-y-2 text-black">
+											{(["Regular",
+												"Irregular (Sem Restrição)",
+												"Irregular (Contrato Cancelado)",
+												"Irregular (Com Restrição)"] as StatusContrato[]).map(st => (
+												<label key={st} className="flex items-center gap-2">
+													<input
+														type="radio"
+														name="status"
+														checked={(form.status ?? "Regular") === st}
+														onChange={() => setForm(prev => ({ ...prev, status: st }))}
+													/>
+													<span>{st}</span>
+												</label>
+											))}
+										</div>
+									</label>
 								</div>
-							</label>
-						</div>
 
-						<div className="mt-6 flex justify-end gap-2">
-							<button onClick={handleCancel} className="rounded-xl bg-red-400 px-4 py-2 text-white hover:bg-red-500 transform transition-transform hover:scale-105">Cancelar</button>
-							<button onClick={handleSave} className="rounded-xl bg-green-500 px-4 py-2 text-white hover:bg-green-600 transform transition-transform hover:scale-105">Gravar</button>
+								<div className="mt-6 flex justify-end gap-2">
+									<button onClick={handleCancel} className="rounded-xl bg-red-400 px-4 py-2 text-white hover:bg-red-500 transform transition-transform hover:scale-105">Cancelar</button>
+									<button onClick={handleSave} className="rounded-xl bg-green-500 px-4 py-2 text-white hover:bg-green-600 transform transition-transform hover:scale-105">Gravar</button>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

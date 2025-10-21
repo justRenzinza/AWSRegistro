@@ -126,6 +126,18 @@ export default function ClientesPage() {
 		setPage((p) => Math.min(p, totalPages));
 	}, [totalPages]);
 
+	/* trava/destrava o scroll do body quando o modal abre/fecha */
+	useEffect(() => {
+		if (editingId !== null) {
+			document.body.style.overflow = "hidden";
+		} else {
+			document.body.style.overflow = "";
+		}
+		return () => {
+			document.body.style.overflow = "";
+		};
+	}, [editingId]);
+
 	function toggleSort(key: SortKey) {
 		if (sortKey !== key) {
 			setSortKey(key);
@@ -234,7 +246,7 @@ export default function ClientesPage() {
 							<div className="text-sm text-gray-500">Código {r.codigo}</div>
 							<div className="font-medium text-gray-900 break-words">{r.razaoSocial}</div>
 						</div>
-					
+
 						<div className="flex items-start gap-1">
 							<button
 								onClick={() => handleEditOpen(r.id)}
@@ -544,105 +556,119 @@ export default function ClientesPage() {
 
 			{/* popup adicionar/editar */}
 			{editingId !== null && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
-					<div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-lg">
-						<h2 className="mb-4 text-xl font-semibold text-blue-700">
-							{editingId === 0 ? "Adicionar Cliente" : "Editar Cliente"}
-						</h2>
+				<div
+					className="fixed inset-0 z-50"
+					role="dialog"
+					aria-modal="true"
+					aria-label={editingId === 0 ? "Adicionar Cliente" : "Editar Cliente"}
+				>
+					{/* backdrop */}
+					<div className="absolute inset-0 bg-black/50" />
 
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<label className="text-sm">
-								<span className="mb-1 block text-black">Código</span>
-								<input
-									type="number"
-									value={String(editForm.codigo ?? "")}
-									onChange={(e) => setEditForm((prev) => ({ ...prev, codigo: Number(e.target.value) }))}
-									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
-								/>
-							</label>
+					{/* wrapper: full-screen no mobile, centralizado no desktop */}
+					<div className="absolute inset-0 flex items-stretch sm:items-center justify-center p-0 sm:p-3">
+						{/* card: ocupa a tela no mobile; no desktop vira caixa centralizada */}
+						<div className="h-full w-full sm:h-auto sm:w-full sm:max-w-2xl rounded-none sm:rounded-xl bg-white shadow-lg overflow-y-auto">
+							<h2 className="sticky top-0 z-10 px-6 py-4 text-xl font-semibold text-blue-700 bg-white border-b">
+								{editingId === 0 ? "Adicionar Cliente" : "Editar Cliente"}
+							</h2>
 
-							<label className="text-sm">
-								<span className="mb-1 block text-black">Razão Social</span>
-								<input
-									type="text"
-									value={editForm.razaoSocial ?? ""}
-									onChange={(e) => setEditForm((prev) => ({ ...prev, razaoSocial: e.target.value }))}
-									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
-								/>
-							</label>
+							<div className="p-6">
+								<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+									<label className="text-sm">
+										<span className="mb-1 block text-black">Código</span>
+										<input
+											type="number"
+											value={String(editForm.codigo ?? "")}
+											onChange={(e) => setEditForm((prev) => ({ ...prev, codigo: Number(e.target.value) }))}
+											className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+										/>
+									</label>
 
-							<label className="text-sm">
-								<span className="mb-1 block text-black">CNPJ</span>
-								<input
-									type="text"
-									value={editForm.cnpj ?? ""}
-									onChange={(e) => {
-										const digits = e.target.value.replace(/\D/g, "").slice(0, 14);
-										setEditForm((prev) => ({ ...prev, cnpj: digits }));
-										if (!digits) setErrors((prev) => ({ ...prev, cnpj: "CNPJ é obrigatório." }));
-										else if (!isValidCNPJ(digits)) setErrors((prev) => ({ ...prev, cnpj: "CNPJ inválido." }));
-										else setErrors((prev) => ({ ...prev, cnpj: undefined }));
-									}}
-									onBlur={() => {
-										setEditForm((prev) => ({ ...prev, cnpj: formatCNPJ(prev.cnpj ?? "") }));
-									}}
-									className={`w-full rounded border px-3 py-2 text-sm ${errors.cnpj ? "border-red-500" : "border-gray-300"} text-black`}
-								/>
-								{errors.cnpj && <p className="mt-1 text-xs text-red-600">{errors.cnpj}</p>}
-							</label>
+									<label className="text-sm">
+										<span className="mb-1 block text-black">Razão Social</span>
+										<input
+											type="text"
+											value={editForm.razaoSocial ?? ""}
+											onChange={(e) => setEditForm((prev) => ({ ...prev, razaoSocial: e.target.value }))}
+											className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+										/>
+									</label>
 
-							<label className="text-sm">
-								<span className="mb-1 block text-black">Data Registro</span>
-								<input
-									type="text"
-									value={editForm.dataRegistro ?? ""}
-									onChange={(e) => setEditForm((prev) => ({ ...prev, dataRegistro: e.target.value }))}
-									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
-									placeholder="dd/mm/aaaa"
-								/>
-							</label>
+									<label className="text-sm">
+										<span className="mb-1 block text-black">CNPJ</span>
+										<input
+											type="text"
+											value={editForm.cnpj ?? ""}
+											onChange={(e) => {
+												const digits = e.target.value.replace(/\D/g, "").slice(0, 14);
+												setEditForm((prev) => ({ ...prev, cnpj: digits }));
+												if (!digits) setErrors((prev) => ({ ...prev, cnpj: "CNPJ é obrigatório." }));
+												else if (!isValidCNPJ(digits)) setErrors((prev) => ({ ...prev, cnpj: "CNPJ inválido." }));
+												else setErrors((prev) => ({ ...prev, cnpj: undefined }));
+											}}
+											onBlur={() => {
+												setEditForm((prev) => ({ ...prev, cnpj: formatCNPJ(prev.cnpj ?? "") }));
+											}}
+											className={`w-full rounded border px-3 py-2 text-sm ${errors.cnpj ? "border-red-500" : "border-gray-300"} text-black`}
+										/>
+										{errors.cnpj && <p className="mt-1 text-xs text-red-600">{errors.cnpj}</p>}
+									</label>
 
-							<label className="text-sm">
-								<span className="mb-1 block text-black">Contato</span>
-								<input
-									type="text"
-									value={editForm.contato ?? ""}
-									onChange={(e) => setEditForm((prev) => ({ ...prev, contato: e.target.value }))}
-									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
-								/>
-							</label>
+									<label className="text-sm">
+										<span className="mb-1 block text-black">Data Registro</span>
+										<input
+											type="text"
+											value={editForm.dataRegistro ?? ""}
+											onChange={(e) => setEditForm((prev) => ({ ...prev, dataRegistro: e.target.value }))}
+											className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+											placeholder="dd/mm/aaaa"
+										/>
+									</label>
 
-							<label className="text-sm">
-								<span className="mb-1 block text-black">Telefone</span>
-								<input
-									type="text"
-									value={editForm.telefone ?? ""}
-									onChange={(e) => setEditForm((prev) => ({ ...prev, telefone: e.target.value }))}
-									className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
-								/>
-							</label>
+									<label className="text-sm">
+										<span className="mb-1 block text-black">Contato</span>
+										<input
+											type="text"
+											value={editForm.contato ?? ""}
+											onChange={(e) => setEditForm((prev) => ({ ...prev, contato: e.target.value }))}
+											className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+										/>
+									</label>
 
-							<label className="text-sm md:col-span-2">
-								<span className="mb-1 block text-black">Email</span>
-								<input
-									type="email"
-									value={editForm.email ?? ""}
-									onChange={(e) => {
-										const v = e.target.value;
-										setEditForm((prev) => ({ ...prev, email: v }));
-										if (!v) setErrors((prev) => ({ ...prev, email: "Email é obrigatório." }));
-										else if (!isValidEmail(v)) setErrors((prev) => ({ ...prev, email: "Email inválido." }));
-										else setErrors((prev) => ({ ...prev, email: undefined }));
-									}}
-									className={`w-full rounded border px-3 py-2 text-sm ${errors.email ? "border-red-500" : "border-gray-300"} text-black`}
-								/>
-								{errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
-							</label>
-						</div>
+									<label className="text-sm">
+										<span className="mb-1 block text-black">Telefone</span>
+										<input
+											type="text"
+											value={editForm.telefone ?? ""}
+											onChange={(e) => setEditForm((prev) => ({ ...prev, telefone: e.target.value }))}
+											className="w-full rounded border border-gray-300 text-black px-3 py-2 text-sm"
+										/>
+									</label>
 
-						<div className="mt-6 flex justify-end gap-2">
-							<button onClick={handleEditCancel} className="rounded-xl bg-red-400 px-4 py-2 text-white hover:bg-red-500 transform transition-transform hover:scale-105">Cancelar</button>
-							<button onClick={handleEditSave} className="rounded-xl bg-green-500 px-4 py-2 text-white hover:bg-green-600 transform transition-transform hover:scale-105">Salvar</button>
+									<label className="text-sm md:col-span-2">
+										<span className="mb-1 block text-black">Email</span>
+										<input
+											type="email"
+											value={editForm.email ?? ""}
+											onChange={(e) => {
+												const v = e.target.value;
+												setEditForm((prev) => ({ ...prev, email: v }));
+												if (!v) setErrors((prev) => ({ ...prev, email: "Email é obrigatório." }));
+												else if (!isValidEmail(v)) setErrors((prev) => ({ ...prev, email: "Email inválido." }));
+												else setErrors((prev) => ({ ...prev, email: undefined }));
+											}}
+											className={`w-full rounded border px-3 py-2 text-sm ${errors.email ? "border-red-500" : "border-gray-300"} text-black`}
+										/>
+										{errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
+									</label>
+								</div>
+
+								<div className="mt-6 flex justify-end gap-2">
+									<button onClick={handleEditCancel} className="rounded-xl bg-red-400 px-4 py-2 text-white hover:bg-red-500 transform transition-transform hover:scale-105">Cancelar</button>
+									<button onClick={handleEditSave} className="rounded-xl bg-green-500 px-4 py-2 text-white hover:bg-green-600 transform transition-transform hover:scale-105">Salvar</button>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
